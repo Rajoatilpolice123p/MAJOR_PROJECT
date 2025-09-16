@@ -10,8 +10,8 @@ const LANGUAGES = [
 ];
 
 const EMOTIONS = [
-  "HAPPY", "SAD", "CALM", "ANGRY", "FEAR", "Mass", 
-  "Romantic", "Energetic", "Peaceful","DISGUST", 
+  "HAPPY", "SAD", "CALM", "ANGRY", "FEAR", "Mass",
+  "Romantic", "Energetic", "Peaceful", "DISGUST",
   "CONFUSED", "EXCITED", "RELAXED", "BORED", "NEUTRAL", "ANXIOUS",
   "LOVING", "SILLY", "CONTENT", "FRUSTRATED", "TIRED", "SURPRISED"
 ];
@@ -24,7 +24,42 @@ function App() {
   const [loading, setLoading] = useState(false);
   const videoRef = useRef(null);
   const [showControls, setShowControls] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const playerRef = useRef(null);
 
+  // Load YouTube API
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+    }
+  }, []);
+
+  // Initialize player when playlist or currentIndex changes
+  useEffect(() => {
+    if (!playlist.length || !window.YT) return;
+
+    if (playerRef.current) playerRef.current.destroy();
+
+    setTimeout(() => {
+      playerRef.current = new window.YT.Player("ytplayer", {
+        height: "200",
+        width: "100%",
+        videoId: playlist[currentIndex].id,
+        events: {
+          onStateChange: (event) => {
+            if (event.data === window.YT.PlayerState.ENDED) {
+              handleNext();
+            }
+          },
+        },
+        playerVars: { autoplay: 1 },
+      });
+    }, 100);
+  }, [playlist, currentIndex]);
+
+  // Webcam setup
   useEffect(() => {
     if (!manualMode && showControls) {
       navigator.mediaDevices
@@ -36,7 +71,7 @@ function App() {
     }
   }, [manualMode, showControls]);
 
-  async function handleCapture() {
+  const handleCapture = async () => {
     if (!videoRef.current) return;
     setLoading(true);
 
@@ -56,9 +91,9 @@ function App() {
     }
 
     setLoading(false);
-  }
+  };
 
-  async function handleGetPlaylist() {
+  const handleGetPlaylist = async () => {
     let mood = emotion;
 
     if (manualMode && !emotion) {
@@ -73,108 +108,62 @@ function App() {
 
     setLoading(true);
     try {
-      const list = await getPlaylist(mood, language);
-      setPlaylist(list);
+      const response = await getPlaylist(mood, language);
+      setPlaylist(response);
+      setCurrentIndex(0);
       setShowControls(false);
     } catch (err) {
       console.error("Playlist fetch error:", err);
       alert("Failed to fetch playlist.");
     }
     setLoading(false);
-  }
+  };
 
-  function handleReset() {
+  const handleUpdatePlaylist = async () => {
+    await handleGetPlaylist(); // same function, just re-fetch playlist
+  };
+
+  const handleReset = () => {
     setPlaylist([]);
     setShowControls(true);
-  }
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % playlist.length);
+  };
+
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev - 1 + playlist.length) % playlist.length);
+  };
+
+  const handleSelectSong = (index) => {
+    setCurrentIndex(index);
+  };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "10px",
-        background: "linear-gradient(to right, #ff7e5f, #feb47b, #86A8E7, #91EAE4)",
-        color: "#fff",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 500,
-          margin: "auto",
-          backgroundColor: "rgba(0,0,0,0.6)",
-          borderRadius: 20,
-          padding: "20px",
-          boxShadow: "0 8px 16px rgba(0,0,0,0.4)",
-        }}
-      >
-        <h1 style={{ textAlign: "center", marginBottom: 20, textShadow: "2px 2px 5px #000", fontSize: "1.5em" }}>
-          🎵 Emotion Music Player 🎵
-        </h1>
+    <div style={{ minHeight: "100vh", padding: "10px", background: "linear-gradient(to right, #ff7e5f, #feb47b, #86A8E7, #91EAE4)", color: "#fff", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ maxWidth: 500, margin: "auto", backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 20, padding: "20px", boxShadow: "0 8px 16px rgba(0,0,0,0.4)" }}>
+        <h1 style={{ textAlign: "center", marginBottom: 20, textShadow: "2px 2px 5px #000", fontSize: "1.5em" }}>🎵 Emotion Music Player 🎵</h1>
 
         {showControls && (
           <>
             <div style={{ marginBottom: 15, display: "flex", flexDirection: "column" }}>
               <label style={{ marginBottom: 5 }}>Select Language: </label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                style={{
-                  padding: "8px",
-                  borderRadius: 10,
-                  border: "none",
-                  outline: "none",
-                  fontSize: "1em",
-                }}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
+              <select value={language} onChange={(e) => setLanguage(e.target.value)} style={{ padding: "8px", borderRadius: 10, border: "none", outline: "none", fontSize: "1em" }}>
+                {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
 
             <div style={{ marginBottom: 15 }}>
-              <button
-                onClick={() => setManualMode(!manualMode)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  borderRadius: 20,
-                  border: "none",
-                  background: "#ff4e50",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                  fontSize: "1em",
-                  marginBottom: 10
-                }}
-              >
+              <button onClick={() => setManualMode(!manualMode)} style={{ width: "100%", padding: "10px", borderRadius: 20, border: "none", background: "#ff4e50", color: "#fff", cursor: "pointer", boxShadow: "0 4px 8px rgba(0,0,0,0.3)", fontSize: "1em", marginBottom: 10 }}>
                 {manualMode ? "Switch to Webcam Mode" : "Choose Mood Manually"}
               </button>
             </div>
 
             {!manualMode && (
               <div style={{ marginBottom: 15, textAlign: "center" }}>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  style={{ width: "100%", maxWidth: 320, borderRadius: 15, border: "3px solid #fff", boxShadow: "0 4px 8px rgba(0,0,0,0.5)" }}
-                />
-                <button
-                  onClick={handleCapture}
-                  disabled={loading}
-                  style={{
-                    marginTop: 10,
-                    width: "100%",
-                    padding: "10px",
-                    borderRadius: 20,
-                    border: "none",
-                    background: "#1fddff",
-                    color: "#000",
-                    cursor: "pointer",
-                    fontSize: "1em",
-                  }}
-                >
+                <video ref={videoRef} autoPlay style={{ width: "100%", maxWidth: 320, borderRadius: 15, border: "3px solid #fff", boxShadow: "0 4px 8px rgba(0,0,0,0.5)" }} />
+                <button onClick={handleCapture} disabled={loading} style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 20, border: "none", background: "#1fddff", color: "#000", cursor: "pointer", fontSize: "1em" }}>
                   {loading ? "Detecting..." : "Detect Emotion"}
                 </button>
               </div>
@@ -182,108 +171,47 @@ function App() {
 
             {manualMode && (
               <div style={{ marginBottom: 15 }}>
-                <label style={{ display: "block", marginBottom: 5 }}>
-                  Select Mood:
-                </label>
-                <select
-                  value={emotion}
-                  onChange={(e) => setEmotion(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    borderRadius: 10,
-                    border: "none",
-                    outline: "none",
-                    fontSize: "1em",
-                  }}
-                >
+                <label style={{ display: "block", marginBottom: 5 }}>Select Mood:</label>
+                <select value={emotion} onChange={(e) => setEmotion(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: 10, border: "none", outline: "none", fontSize: "1em" }}>
                   <option value="">Choose</option>
-                  {EMOTIONS.map((e) => (
-                    <option key={e} value={e}>{e}</option>
-                  ))}
+                  {EMOTIONS.map((e) => <option key={e} value={e}>{e}</option>)}
                 </select>
               </div>
             )}
 
-            <button
-              onClick={handleGetPlaylist}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 20,
-                border: "none",
-                background: "#6a11cb",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "1em",
-              }}
-            >
+            <button onClick={handleGetPlaylist} disabled={loading} style={{ width: "100%", padding: "10px", borderRadius: 20, border: "none", background: "#6a11cb", color: "#fff", cursor: "pointer", fontSize: "1em", marginBottom: 10 }}>
               {loading ? "Loading Playlist..." : "Get Playlist"}
             </button>
+
+            
           </>
         )}
 
-        {!showControls && (
-          <div style={{ marginBottom: 15, textAlign: "center" }}>
-            <label style={{ display: "block", marginBottom: 5 }}>
-              Change Mood:
-            </label>
-            <select
-              value={emotion}
-              onChange={(e) => setEmotion(e.target.value)}
-              style={{ padding: "8px", borderRadius: 10, border: "none", marginBottom: 10, width: "100%" }}
-            >
-              {EMOTIONS.map((e) => <option key={e} value={e}>{e}</option>)}
-            </select>
+        {!showControls && playlist.length > 0 && (
+          <div>
+            <div id="ytplayer" style={{ width: "100%", height: "200px" }}></div>
+            <h4 style={{ marginTop: 10, textAlign: "center" }}>{playlist[currentIndex].title}</h4>
 
-            <label style={{ display: "block", marginBottom: 5 }}>Language:</label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              style={{ padding: "8px", borderRadius: 10, border: "none", width: "100%" }}
-            >
-              {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
+            <div style={{ marginTop: 10, textAlign: "center" }}>
+              <button onClick={handlePrevious} style={{ marginRight: 10, padding: "8px 16px", borderRadius: 15, border: "none", background: "#2575fc", color: "#fff", cursor: "pointer" }}>⏮ Previous</button>
+              <button onClick={handleNext} style={{ padding: "8px 16px", borderRadius: 15, border: "none", background: "#6a11cb", color: "#fff", cursor: "pointer" }}>⏭ Next</button>
+            </div>
 
-            <button
-              onClick={handleGetPlaylist}
-              style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 15, border: "none", background: "#6a11cb", color: "#fff", cursor: "pointer" }}
-            >
-              Update Playlist
-            </button>
-            <button
-              onClick={handleReset}
-              style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 15, border: "none", background: "#ff4e50", color: "#fff", cursor: "pointer" }}
-            >
+            <div style={{ marginTop: 20 }}>
+              <h4 style={{ textAlign: "center" }}>Upcoming Songs</h4>
+              <div style={{ display: "flex", flexDirection: "column", maxHeight: "300px", overflowY: "auto", padding: "10px 0" }}>
+                {playlist.map((song, index) => (
+                  <div key={song.id} onClick={() => handleSelectSong(index)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginBottom: 10, padding: 5, borderRadius: 10, backgroundColor: index === currentIndex ? "rgba(255,255,255,0.2)" : "transparent" }}>
+                    <img src={song.thumbnail} alt={song.title} style={{ width: 60, height: 40, borderRadius: 5, marginRight: 10 }} />
+                    <p style={{ fontSize: "0.9em", margin: 0 }}>{song.title.length > 30 ? song.title.slice(0, 30) + "..." : song.title}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={handleReset} style={{ marginTop: 10, width: "100%", padding: "10px", borderRadius: 15, border: "none", background: "#ff4e50", color: "#fff", cursor: "pointer" }}>
               Change Mood/Language
             </button>
-          </div>
-        )}
-
-        {playlist.length > 0 && (
-          <div style={{ marginTop: 25 }}>
-            <h3 style={{ textAlign: "center", fontSize: "1.2em" }}>🎶 Recommended Songs 🎶</h3>
-            {playlist.map((song) => (
-              <div key={song.id} style={{ marginBottom: 20, backgroundColor: "rgba(255,255,255,0.1)", padding: 10, borderRadius: 10 }}>
-                <h4 style={{ textAlign: "center", fontSize: "1em" }}>{song.title}</h4>
-                <img
-                  src={song.thumbnail}
-                  alt={song.title}
-                  style={{ display: "block", margin: "10px auto", maxWidth: "100%", borderRadius: 10 }}
-                />
-                <iframe
-                  width="100%"
-                  height="200"
-                  src={`https://www.youtube.com/embed/${song.id}`}
-                  title={song.title}
-                  frameBorder="0"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  style={{ display: "block", margin: "10px auto", borderRadius: 10 }}
-                />
-              </div>
-            ))}
           </div>
         )}
       </div>
