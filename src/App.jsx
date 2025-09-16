@@ -120,7 +120,7 @@ function App() {
   };
 
   const handleUpdatePlaylist = async () => {
-    await handleGetPlaylist(); // same function, just re-fetch playlist
+    await handleGetPlaylist(); // re-fetch playlist
   };
 
   const handleReset = () => {
@@ -182,21 +182,29 @@ function App() {
             <button onClick={handleGetPlaylist} disabled={loading} style={{ width: "100%", padding: "10px", borderRadius: 20, border: "none", background: "#6a11cb", color: "#fff", cursor: "pointer", fontSize: "1em", marginBottom: 10 }}>
               {loading ? "Loading Playlist..." : "Get Playlist"}
             </button>
-
-            
           </>
         )}
 
         {!showControls && playlist.length > 0 && (
           <div>
+            {/* Display selected language and mood */}
+            <div style={{ textAlign: "center", marginBottom: 10 }}>
+              <p style={{ margin: 0, fontSize: "1em" }}>
+                🎵 Language: <strong>{language}</strong> | Mood: <strong>{emotion}</strong>
+              </p>
+            </div>
+
+            {/* YouTube Player */}
             <div id="ytplayer" style={{ width: "100%", height: "200px" }}></div>
             <h4 style={{ marginTop: 10, textAlign: "center" }}>{playlist[currentIndex].title}</h4>
 
+            {/* Player Controls */}
             <div style={{ marginTop: 10, textAlign: "center" }}>
               <button onClick={handlePrevious} style={{ marginRight: 10, padding: "8px 16px", borderRadius: 15, border: "none", background: "#2575fc", color: "#fff", cursor: "pointer" }}>⏮ Previous</button>
               <button onClick={handleNext} style={{ padding: "8px 16px", borderRadius: 15, border: "none", background: "#6a11cb", color: "#fff", cursor: "pointer" }}>⏭ Next</button>
             </div>
 
+            {/* Upcoming Songs */}
             <div style={{ marginTop: 20 }}>
               <h4 style={{ textAlign: "center" }}>Upcoming Songs</h4>
               <div style={{ display: "flex", flexDirection: "column", maxHeight: "300px", overflowY: "auto", padding: "10px 0" }}>
@@ -204,6 +212,7 @@ function App() {
                   <div key={song.id} onClick={() => handleSelectSong(index)} style={{ cursor: "pointer", display: "flex", alignItems: "center", marginBottom: 10, padding: 5, borderRadius: 10, backgroundColor: index === currentIndex ? "rgba(255,255,255,0.2)" : "transparent" }}>
                     <img src={song.thumbnail} alt={song.title} style={{ width: 60, height: 40, borderRadius: 5, marginRight: 10 }} />
                     <p style={{ fontSize: "0.9em", margin: 0 }}>{song.title.length > 30 ? song.title.slice(0, 30) + "..." : song.title}</p>
+                    {index === currentIndex && <span style={{ marginLeft: 10, color: "#ffd700", fontWeight: "bold" }}>Now Playing</span>}
                   </div>
                 ))}
               </div>
